@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE overlay SYSTEM "chrome://theliterature/locale/overlay.dtd">
+
+<overlay id="TheLiterature-overlay"
+	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+	<!-- Import the main extension logic -->
+	<script src="chrome://zotero/content/include.js"/>
+	<script src="chrome://TheLiterature/content/scripts/theliterature.js"/>
+
+	<!-- Add entry to context menus when selecting individual items-->
+	<popup
+        id="zotero-itemmenu"
+        onpopupshowing="ZoteroPane.buildItemContextMenu();">
+        <menuitem
+            id="zotero-itemmenu-theliterature-all"
+            label="&theliterature-get-all-pdf.label;"
+            oncommand="Zotero.TheLiterature.getAllSelectedItems()"/>
+				<menuitem
+            id="zotero-itemmenu-theliterature-missing"
+            label="&theliterature-get-missing-pdf.label;"
+            oncommand="Zotero.TheLiterature.getMissingSelectedItems()"/>
+    </popup>
+</overlay>

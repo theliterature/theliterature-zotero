@@ -1,0 +1,5 @@
+content theliterature chrome/content/
+
+overlay	chrome://zotero/content/zoteroPane.xul chrome://TheLiterature/content/overlay.xul
+
+locale  theliterature  en-US   chrome/locale/en-US/

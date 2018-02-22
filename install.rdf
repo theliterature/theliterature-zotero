@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+
+    <Description about="urn:mozilla:install-manifest">
+        <em:id>TheLiterature@protonmail.com</em:id>
+        <em:name>The Literature</em:name>
+        <em:version>0.0.1</em:version>
+        <em:type>2</em:type>
+        <em:creator>Nemo</em:creator>
+        <em:description>Zotero plugin for auto-fetching pdfs from Sci-Hub</em:description>
+        <em:homepageURL>http://sci-hub.la</em:homepageURL>
+        <em:type>2</em:type>
+
+        <em:targetApplication>
+          <Description>
+            <em:id>zotero@chnm.gmu.edu</em:id>
+            <em:minVersion>5.0.0</em:minVersion>
+            <em:maxVersion>5.*</em:maxVersion>
+          </Description>
+        </em:targetApplication>
+    </Description>
+</RDF>
