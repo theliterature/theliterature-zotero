@@ -2,11 +2,14 @@
 /*global Zotero ZoteroPane*/
 /*eslint no-undef: "error"*/
 /*eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
+if (typeof Zotero === 'undefined') {
+    Zotero = {};
+}
 
 Zotero.TheLiterature = {};
 
 //Initialize plugin to starting state. Mainly copied from the
-//sample plugin
+//Zotero sample plugin
 Zotero.TheLiterature.init = function() {
 	Zotero.TheLiterature.version = "0.0.1";
 
