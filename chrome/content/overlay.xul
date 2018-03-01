@@ -7,7 +7,7 @@
 
 	<!-- Import the main extension logic -->
 	<script src="chrome://zotero/content/include.js"/>
-	<script src="chrome://TheLiterature/content/scripts/theliterature.js"/>
+	<script src="chrome://TheLiterature/content/scripts/include.js"/>
 
 	<!-- Add entry to context menus when selecting individual items-->
 	<popup
