@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>crossref.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="../docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="crossref.html">
+                  scripts/crossref.js
+                </a>
+              
+                
+                <a class="source" href="include.html">
+                  scripts/include.js
+                </a>
+              
+                
+                <a class="source" href="scihubmirror.html">
+                  scripts/scihubmirror.js
+                </a>
+              
+                
+                <a class="source" href="theliterature.html">
+                  scripts/theliterature.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>crossref.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <p>Modified from <a href="https://github.com/scienceai/crossref">https://github.com/scienceai/crossref</a>
+Also <a href="https://search.crossref.org/help/api">https://search.crossref.org/help/api</a></p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>make a request</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Zotero.TheLiterature.queryCrossref = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">item, callback</span>) </span>{
+	<span class="hljs-built_in">console</span>.log(<span class="hljs-string">"starting queryCrossref"</span>);
+	<span class="hljs-keyword">var</span> baseUrl =  <span class="hljs-string">"https://api.crossref.org/"</span>;
+	<span class="hljs-keyword">var</span> path = <span class="hljs-string">"links"</span>;
+	<span class="hljs-keyword">var</span> request = <span class="hljs-keyword">new</span> XMLHttpRequest();</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Set parameters for the post</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>	request.setRequestHeader(<span class="hljs-string">"Content-Type"</span>, <span class="hljs-string">"application/json"</span>);
+	<span class="hljs-keyword">var</span> fullUrl = baseUrl + path;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>Since only looking for one result, set to synchronous</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>	request.open(<span class="hljs-string">"POST"</span>, fullUrl, <span class="hljs-literal">true</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Set a generous timeout</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>	request.timeout = <span class="hljs-number">60000</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>Call a function when the state changes.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>	request.onload = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+		<span class="hljs-built_in">console</span>.log(<span class="hljs-string">"loaded!"</span>);
+		<span class="hljs-keyword">var</span> responseJSON = <span class="hljs-built_in">JSON</span>.parse(request.response);
+		<span class="hljs-keyword">if</span>(responseJSON.records[<span class="hljs-number">0</span>].doi) {
+			<span class="hljs-built_in">console</span>.log(<span class="hljs-string">"DOI is "</span> + responseJSON.records[<span class="hljs-number">0</span>].doi);
+			item.setField(<span class="hljs-string">"DOI"</span>, responseJSON.records[<span class="hljs-number">0</span>].doi);
+			callback(<span class="hljs-literal">true</span>);
+		}
+		<span class="hljs-keyword">else</span> {
+			<span class="hljs-built_in">console</span>.log(<span class="hljs-string">"DOI not found"</span>);
+			callback(<span class="hljs-literal">false</span>);
+		}
+	};
+	request.onerror = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">error</span>) </span>{
+    <span class="hljs-keyword">if</span> (request.statusCode === <span class="hljs-number">429</span>) {
+      <span class="hljs-keyword">var</span> headers = request.headers || {};
+      <span class="hljs-keyword">var</span> limit = headers[<span class="hljs-string">"x-rate-limit-limit"</span>] || <span class="hljs-string">"N/A"</span>;
+      <span class="hljs-keyword">var</span> interval = headers[<span class="hljs-string">"x-rate-limit-interval"</span>] || <span class="hljs-string">"N/A"</span>;
+      <span class="hljs-built_in">console</span>.warn(<span class="hljs-string">"Rate limit exceeded: ${limit} requests in ${interval}"</span>);
+    }
+		<span class="hljs-built_in">console</span>.log(error);
+		callback(<span class="hljs-literal">false</span>);
+	};
+	request.ontimeout = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">error</span>) </span>{
+		<span class="hljs-built_in">console</span>.log(error);
+		callback(<span class="hljs-literal">false</span>);
+	};
+	request.send();
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>request({ url: <code>${endpoint}${path}</code>, json: true, timeout }, (err, res, body) =&gt; {
+  if (err || !res || res.statusCode &gt;= 400) {
+    let statusCode = res ? res.statusCode : 0
+      , statusMessage = res ? res.statusMessage : ‘Unspecified error (likely a timeout)’
+    ;</p>
+<pre><code><span class="hljs-keyword">if</span> (statusCode === <span class="hljs-number">429</span>) {
+  <span class="hljs-keyword">let</span> headers = res.headers || {}
+    , limit = headers[<span class="hljs-string">'x-rate-limit-limit'</span>] || <span class="hljs-string">'N/A'</span>
+    , interval = headers[<span class="hljs-string">'x-rate-limit-interval'</span>] || <span class="hljs-string">'N/A'</span>
+  ;
+  <span class="hljs-keyword">return</span> cb(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Rate limit exceeded: <span class="hljs-subst">${limit}</span> requests in <span class="hljs-subst">${interval}</span>`</span>));
+}
+<span class="hljs-keyword">if</span> (statusCode === <span class="hljs-number">404</span>) <span class="hljs-keyword">return</span> cb(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Not found on CrossRef: '<span class="hljs-subst">${endpoint}</span><span class="hljs-subst">${path}</span>'`</span>));
+<span class="hljs-keyword">let</span> msg = (err &amp;&amp; err.message) ? err.message : statusMessage;
+<span class="hljs-keyword">return</span> cb(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`CrossRef error: [<span class="hljs-subst">${statusCode}</span>] <span class="hljs-subst">${msg}</span>`</span>));
+</code></pre><p>  }
+  if (typeof body !== ‘object’) return cb(new Error(<code>CrossRef response was not JSON: ${body}</code>));
+  if (!body.status) return cb(new Error(‘Malformed CrossRef response: no <code>status</code> field.’));
+  if (body.status !== ‘ok’) return cb(new Error(<code>CrossRef error: ${body.status}</code>));
+  cb(null, body.message);
+});
+}</p>
+
+            </div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

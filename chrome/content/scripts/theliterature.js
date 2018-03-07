@@ -1,5 +1,5 @@
 //Define global functions for eslint
-/*global Zotero ZoteroPane Components Services AddonManager*/
+/*global Zotero ZoteroPane Components AddonManager*/
 /*eslint no-undef: "error"*/
 /*eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
 
@@ -9,100 +9,84 @@ Zotero.TheLiterature = new function() {
 	this.prefs = null;
 
 	//Initialize plugin to starting state. Mainly copied from the
-	//Zotero sample plugin
+	//Zotero sample plugin and zotfile.
 	this.init = function() {
-		//First time setrup. Copied from zotfile
+		//Detect if this is the first time setting up.
 		if(this.prefs === null) {
-			// define TheLiterature variables
+			//Set up a window mediator with Zotero
 			this.wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
 				.getService(Components.interfaces.nsIWindowMediator);
-			//Preference docs at https://developer.mozilla.org/en-US/docs/Archive/Add-ons/Code_snippets/Preferences
+			//Set up preference service with Zotero
+			//Documentation on preferences at 
+			//https://developer.mozilla.org/en-US/docs/Archive/Add-ons/Code_snippets/Preferences
 			this.prefs = Components.classes["@mozilla.org/preferences-service;1"]
-				.getService(Components.interfaces.nsIPrefService).getBranch("extensions.TheLiterature.");
+				.getService(Components.interfaces.nsIPrefService)
+				.getBranch("extensions.TheLiterature.");
 		}
 
 		//Version handling. Copied from zotfile then modified
+		//Fetch the version number hard coded in preferences
+		//Need to set up automatic updates
 		this.previous_version = this.getPref("version");
+		//Ask Zotero what version it has loaded
 		Components.utils.import("resource://gre/modules/AddonManager.jsm");
 		AddonManager.getAddonByID("TheLiterature@protonmail.com", function(addon) {
+			//If the version Zotero returns doesn't equal that in preferences
+			//assume that Zotero version is newer and set it in preferences
 			if(addon.version != this.previous_version) {
 				Zotero.TheLiterature.setPref("version", addon.version);
 			}
 		});
 
-		// Register a callback in Zotero as an item observer
+		//Register a callback in Zotero as an item observer
+		//Can then catch item changes and act on them if needed
 		if(notifierID === null) {
 			var notifierID = Zotero.Notifier.registerObserver(
 				this.notifierCallback, ["item"]);
 		}
 
-		// Unregister event listeners when the window closes 
-		// Important to avoid a memory leak
+		//Unregister event listeners when the window closes 
+		//Important to avoid a memory leak
 		window.addEventListener("unload", function() {
 			Zotero.Notifier.unregisterObserver(notifierID);
 		}, false);
 
-		//Set an initial sci-hub mirror
+		//Set an initial sci-hub mirror by fetching from preferences
+		//Need to set up a preferences window so that users can
+		//modify the default mirror
 		this.sci_hub_url = this.getPref("sciHubUrl");
 		
-		//If no sci-hub  mirror set, find one and set it
-		//Should change this into a worker thread...
+		//If no sci-hub is mirror set in preferences, find one and set it
+		//Should change this into a worker thread using docs at
 		//https://developer.mozilla.org/en-US/docs/Archive/Using_workers_in_extensions
 		if (!this.sci_hub_url) {
 			this.sciHubMirror.fastestMirror()
-			.then(function (mirror) {
-			console.log("Setting sci-hub url to " + mirror)
-			Zotero.TheLiterature.setPref("sciHubUrl", mirror);
-			})
+				.then(function (mirror) {
+					console.log("Setting sci-hub url to " + mirror);
+					Zotero.TheLiterature.setPref("sciHubUrl", mirror);
+				});
 		}
 	};
 
-	//Set callback to notify if new item is added
-	//Also from https://www.zotero.org/support/dev/sample_plugin
-	this.notifierCallback = {
-		notify: function(event, type, ids, extraData) {
-			if (event == "add") {
-				var itemsAdded = Zotero.Items.get(ids);
-				//Check if item has a pdf
-				for (var item of itemsAdded) {
-					if (this.hasPDF(item)) {
-						return;
-					}
-					else {
-						this.fetchPDF(item);
-					}
-				}
-			}
-		}
-	};
-
-	/**
-	 * Get preference value in 'extensions.zotfile' branch
-	 * @param  {string} pref     Name of preference in 'extensions.zotfile' branch
-	 * @return {string|int|bool} Value of preference.
-	 */
-	//Taken from zotfile. Further documentation at
+	//Taken from zotfile and modified. Further documentation on preferences at
 	//https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIPrefService
 	//https://developer.mozilla.org/en-US/docs/Archive/Add-ons/Code_snippets/Preferences
 	this.getPref = function(pref) {
-		var type = this.prefs.getPrefType(pref);
-		if (type == 0)
-			throw("this.getPref(): Invalid preference value for '" + pref + "'");
-		if (type == this.prefs.PREF_STRING)
-			return this.prefs.getComplexValue(pref, Components.interfaces.nsISupportsString).data;
-		if (type == this.prefs.PREF_INT)
-			return this.prefs.getIntPref(pref);
-		if (type == this.prefs.PREF_BOOL)
+		switch (this.prefs.getPrefType(pref)) {
+		case this.prefs.PREF_BOOL:
 			return this.prefs.getBoolPref(pref);
+		case this.prefs.PREF_STRING:
+			return this.prefs.getComplexValue(pref,
+				Components.interfaces.nsISupportsString).data;
+		case this.prefs.PREF_INT:
+			return this.prefs.getIntPref(pref);
+		}
+		throw("Zotero.TheLiterature.getPref(): ",
+			"Invalid preference value for '" + pref + "'");
 	};
 
-	/**
-	 * Set preference value in 'extensions.zotfile' branch
-	 * @param {string}          pref  Name of preference in 'extensions.zotfile' branch
-	 * @param {string|int|bool} value Value of preference
-	 */
+
 	//Taken from zotfile
-	//Why is this a state machine while getPref is a series of ifs?
 	this.setPref = function(pref, value) {        
 		switch (this.prefs.getPrefType(pref)) {
 		case this.prefs.PREF_BOOL:
@@ -118,16 +102,140 @@ Zotero.TheLiterature = new function() {
 		throw("Zotero.TheLiterature.setPref(): Unable to set preference.");
 	};
 
-	//Check if an item has an attached PDF
+	//Check if a parent item has an attached PDF
+	//return true if PDF present, false if not
 	this.hasPDF = function(item) {
-	//return True if PDF present, False if not
-		var attachments = item.getAttachments();
-		for (var attachment of attachments) {
-			if (Zotero.Items.get(attachment)._attachmentContentType == "application/pdf") {
-				return true;
-			}
+		//Get list of attachments to the item and filter for those that are PDFs
+		var attachments = item.getAttachments()
+			//getAttachments() returns an array with numeric references to the 
+			//actual attachment. Use map and Zotero.Items.get to fetch the
+			//actual attachment object
+			.map(item => typeof item == "number" ? Zotero.Items.get(item) : item)
+			//Filter for attachment objects. Not sure if necessary but Zotfile
+			//does this
+			.filter(att => att.isAttachment())
+			//Filter for attachments that are of type PDF
+			.filter(att => att.attachmentContentType == "application/pdf");
+		//Test to see if any PDF attachments in the list
+		if (attachments.length > 0) {
+			return true;
 		}
-		return false;
+		else {
+			return false;
+		}
+	};
+
+	//Check if an item has a DOI
+	this.hasDOI = function (item) {
+		if (!item.getField("DOI")) {
+			return this.searchDOI(item);
+		}
+		return Promise.resolve();
+	};
+
+	//Function to search for missing DOI
+	//First tries NCBI's id converter API and then Crossref
+	//If search is successful, return DOI
+	this.searchDOI = function(item) {
+		//See  if a PMID or PMCID is stored in the item's 'extra' field
+		var extra = item.getField("extra");
+		//The extra field isn't strictly formatted so need to search for a
+		//string starting with 'PMID:' or 'PMCID:'
+		//indexOf() returns -1 if not found, otherwise a number indicating
+		//the character index the string starts with
+		var pmidIndex = extra.indexOf("PMID:");
+		var pmcidIndex = extra.indexOf("PMCID:");
+
+		if (pmidIndex >= 0) {
+			//Now shift the index to the start of the pmid value 
+			pmidIndex = pmidIndex + 6;
+			//Get the substring starting at that index
+			var extraSub = extra.substring(pmidIndex);
+			//Use regex to get the string of digits
+			var id = extraSub.match(/^(\d)+/)[0];
+			//Now search NCBI to see if they have a DOI match for the PMID
+			return this.queryNCBI(item, id)
+				//If the NCBI search fails, try crossref
+				.catch(function() {
+					return Zotero.TheLiterature.findDOI.queryCrossref(item);
+				});
+		}
+
+		//Same  as above, but with PMCID instead of PMID
+		else if (pmcidIndex >= 0) {
+			pmcidIndex = pmcidIndex + 6;
+			extraSub = extra.substring(pmcidIndex);
+			id = extraSub.match(/^(\d)+/)[0];
+			return this.queryNCBI(item, id)
+				.catch(function() {
+					return Zotero.TheLiterature.findDOI.queryCrossref(item);
+				});
+		}
+		//Can also try searching crossref
+		else {
+			return Zotero.TheLiterature.findDOI.queryCrossref(item);
+		}
+	};
+
+	//Function to set the DOI field of an item
+	this.setDOI =function (item, doi) {
+		item.setField("DOI", doi);
+	};
+
+	//Take a DOI and lightly test if correctly formatted
+	this.testDOI = function(item) {
+		var doi = item.getField("DOI");
+		var pattern = new RegExp("(^10.(\\d)+/(\\S)+)");
+		if (doi.match(pattern)) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	};
+
+	this.fetchPDFs = function(items) {
+		items.map(item => this.fetchPDF(item));
+	};
+
+	//Inspect item for correct DOI then fetch PDF
+	this.fetchPDF = function(item) {
+		//To get a PDF from sci-hub, we need a doi to be present and valid
+		//First check for a DOI
+		if (!this.hasDOI(item)) {
+			//if not present, try to search for a vaild doi
+			this.searchDOI(item)
+				//searchDOI() returns a promise. If the promise is resolved
+				//a valid DOI was found and has been set in the Zotero database.
+				.then(function() {
+					return Zotero.TheLiterature.sciHub.getPDF(item);
+				})
+				.catch(function() {
+					console.log("No DOI available for " +
+						item.getField("title"));
+					return false;
+				});
+		}
+		//If there is a DOI, test that it is valid
+		else if (!this.testDOI(item)) {
+			//If not valid, search for a valid DOI
+			//searchDOI() both searches and tests the response for validity
+			//searchDOI() returns a promise. If the promise is resolved
+			//a valid DOI was found and has been set in the Zotero databse.
+			this.searchDOI(item)
+				.then(function() {
+					return Zotero.TheLiterature.sciHub.getPDF(item);
+				})
+				.catch(function() {
+					console.log("DOI misformatted for " + 
+						item.getField("title") +
+						" and unable to find replacement");
+					return false;
+				});
+		}
+		else {
+			return Zotero.TheLiterature.sciHub.getPDF(item);
+		}
 	};
 
 	//Get missing pdfs for user selected items
@@ -145,241 +253,11 @@ Zotero.TheLiterature = new function() {
 	this.getAllSelectedItems = function() {
 		this.fetchPDFs(ZoteroPane.getSelectedItems());
 	};
-
-	//Main function to fetch pdf for individual items
-	this.fetchPDFs = function(items) {
-		//If nothing to get, stop
-		if (!items) {
-			return;
-		}
-		//Cycle through each item to check for identifiers
-		for (var item of items) {
-			var searchable = true;
-			//Check if a DOI is available to search Sci-Hub with
-			if (!item.getField("DOI")) {
-				//If no DOI, search for one
-				this.searchDOI(item, function (response) {
-					if (response == false) {
-						console.warn("No DOI available for ", item.getField("title"));
-						searchable = false;
-					}
-					else {
-						console.log("DOI found");
-					}
-				});
-			}
-
-			//Verify doi is correctly formatted
-			if (!this.testDOI(item.getField("DOI"))) {
-				//if not valid, try to search for a vaild doi
-				this.searchDOI(item, function (response) {
-					//If search fails, bail
-					if (response == false) {
-						console.warn("DOI misformatted for ", item.getField("title"),
-							" and unable to find replacement");
-						searchable = false;
-					}
-					else {
-						//If search succeeds, test again
-						if (!this.testDOI(item.getField("DOI"))) {
-							console.warn("DOI misformatted for ", item.getField("title"),
-								" and unable to find replacement");
-							searchable = false;
-						}
-					}
-				});
-			}
-
-			//Once all checks done, pass on to function to give the DOI
-			//to sci-hub and have it save PDF to Zotero under
-			//the parent item
-			if (searchable) {
-				this.getPDF(item, function (result) {
-					console.log("getting PDF for ", item.getField("title"));
-					if (result == false) {
-						console.warn("Unable to download PDF for ", item.getField("title"));
-					}
-				});
-			}
-		}
-	};
-
-	//Function to search for missing DOI based on item title
-	this.searchDOI = function(item, callback) {
-		//If search successful, set DOI field for Zotero item and return true
-		//First look based on PMID or PMCID
-		var extra = item.getField("extra");
-		if (extra.indexOf("PMID:") >= 0) {
-			var index = extra.indexOf("PMID") + 6;
-			var extraSub = extra.substring(index);
-			var id = extraSub.match(/^(\d)+/)[0];
-			this.queryNCBI(item, id, callback, function (result) {
-				if (result != null ) {
-					item.setField("DOI", result);
-					console.log("NCBI search success");
-					callback(true);
-				}
-				else {
-					console.log("NCBI search failed");
-					callback(false);
-				}
-			});
-		}
-
-		else if (extra.indexOf("PMCID:") >= 0) {
-			index = extra.indexOf("PMCID") + 6;
-			extraSub = extra.substring(index);
-			id = extraSub.match(/^(\d)+/)[0];
-			this.queryNCBI(item, id, callback, function (result) {
-				if (result == true ) {
-					item.setField("DOI", result);
-					console.log("NCBI search successful");
-					callback(true);
-				}
-				else {
-					console.log("NCBI search failed");
-					callback(false);
-				}
-			});
-		}
-		//Can also try searching by title from google scholar
-		//If fails, return false
-		else {
-			callback(false);
-		}
-	};
-
-	this.queryNCBI = function(item, searchstring, callback) {
-		//info at https://www.ncbi.nlm.nih.gov/pmc/tools/id-converter-api/
-		console.log("starting queryNCBI");
-		var baseUrl =  "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/";
-		var ids = "?ids=" + searchstring;
-		var tool = "&tool=TheLiterature";
-		var email = "&email=TheLiterature@protonmail.com";
-		var format ="&format=json";
-		var request = new XMLHttpRequest();
-		//Set parameters for the post
-		var fullUrl = baseUrl + ids + tool + email + format;
-		//Since only looking for one result, set to synchronous
-		request.open("GET", fullUrl, true);
-		//Set a generous timeout
-		request.timeout = 10000;
-		//Call a function when the state changes.
-		request.onload = function () {
-			console.log("loaded!");
-			var responseJSON = JSON.parse(request.response);
-			if(responseJSON.records[0].doi) {
-				console.log("DOI is " + responseJSON.records[0].doi);
-				item.setField("DOI", responseJSON.records[0].doi);
-				callback(true);
-			}
-			else {
-				console.log("DOI not found");
-				callback(false);
-			}
-		};
-		request.onerror = function (error) {
-			console.log(error);
-			callback(false);
-		};
-		request.ontimeout = function (error) {
-			console.log(error);
-			callback(false);
-		};
-		request.send();
-	};
-
-	//Take a DOI and lightly test if correctly formatted
-	this.testDOI = function(doi) {
-		var pattern = new RegExp("(^10.(\\d)+/(\\S)+)");
-		if (doi.match(pattern)) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	};
-
-	//Post a DOI to sci-hub and get PDF
-	//Should probably move to its own script
-	this.getPDF = function(item, callback) {
-		var itemDOI = item.getField("DOI");
-		var request = new XMLHttpRequest();
-		//Set parameters for the post. Using encodeURIComponent to
-		//encode special characters often used in DOIs
-		var params = encodeURIComponent("request") +
-			"=" + encodeURIComponent(itemDOI);
-		//Since only looking for one result, set to synchronous
-		request.open("POST", this.sci_hub_url, true);
-		//Set a generous timeout
-		request.timeout = 10000;
-		//Set the proper header information
-		request.setRequestHeader("User-Agent", "TheLiterature/" +
-			this.version);
-		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		request.setRequestHeader("Connection", "open");
-		//Call a function when the state changes.
-		request.onload = function () {
-			console.log(request.response);
-			var response = request.responseText;
-			console.log("request loaded");
-			//Take the response text and parse it as HTML
-			var parser = new DOMParser();
-			var responseHTML = parser.parseFromString(response, "text/html");
-			//Search for a PDF download URL, and if present download PDF
-			if (responseHTML.getElementById("pdf") != null) {
-				console.log("download url is " + responseHTML.getElementById("pdf").src);
-				var downloadURL = responseHTML.getElementById("pdf").src;
-				var importArguments = {url: downloadURL, libraryID: item.libraryID,
-					parentItemID: item.id, collections: undefined};
-				Zotero.Attachments.importFromURL(importArguments);
-				callback(true);
-			}
-			//Handle captcha
-			//Need to figure out how to display a picture and user input
-
-			//Handle pdf not found
-			else if (responseHTML.title ==
-				"Sci-Hub: removing barriers in the way of science") {
-				console.log("pdf not found");
-				callback(false);
-			}
-
-			//Handle anything else
-			else {
-				console.log("wasn't able to handle this case \n", responseHTML);
-				callback(false);
-			}
-		};
-
-		request.onerror = function(err) {
-			console.warn(err);
-			callback(false);
-		};
-		request.ontimeout = function(err) {
-			console.warn(err);
-			callback(false);
-		};
-		console.log("sending request for" + itemDOI);
-		request.send(params);
-	};
 };
-//TODO
-//Search for DOI if not available in parent item
-//Implement https://www.ncbi.nlm.nih.gov/pmc/tools/id-converter-api/
-//Display an icon on the toolbar
-	//Maybe needs to be in overlay.xul?
-	//Provide some menu items under the icon when clicked
-//Set up display windows and user input
 
-//Callback function to display download success status
-//Should probably make this a stub and have a separate
-//subsystem for window handling
-//this.notifier = function(status) {
-	// if (status) {
-	// 	var ww = Components.classes["@mozilla.org/embedcomp/window-watcher;1"].
-	// 				getService(Components.interfaces.nsIWindowWatcher);
-	// 	successWindow = ww.openWindow(null, "chrome://zotero/content/progressWindow.xul",
-	// 					"", "chrome,dialog=no,titlebar=no,popup=yes", null);
-	// }
-//};
+//TODO
+//Display an icon on the toolbar
+//	Maybe needs to be in overlay.xul?
+//	Provide some menu items under the icon when clicked
+//Set up display windows and user input
+//	Window to display download success status
