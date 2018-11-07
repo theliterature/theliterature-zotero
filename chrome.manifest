@@ -1,5 +1,5 @@
-content theliterature chrome/content/
+content theliterature 				chrome/content/
+locale  theliterature  	en-US   	chrome/locale/en-US/
+skin	theliterature 	default		chrome/skin/default/TheLiterature
 
 overlay	chrome://zotero/content/zoteroPane.xul chrome://TheLiterature/content/overlay.xul
-
-locale  theliterature  en-US   chrome/locale/en-US/

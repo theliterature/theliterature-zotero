@@ -19,5 +19,5 @@ Zotero.TheLiterature.notifierCallback = new function() {
 				.filter(item => !item.Zotero.TheLiterature.hasPDF())
 				.map(item => item.Zotero.TheLiterature.fetchPDFs());
 		}
-	}.bind(Zotero.TheLiterature);
+	};
 };

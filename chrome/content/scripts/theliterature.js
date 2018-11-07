@@ -1,5 +1,5 @@
 //Define global functions for eslint
-/*global Zotero ZoteroPane Components AddonManager*/
+/*global Zotero Components AddonManager*/
 /*eslint no-undef: "error"*/
 /*eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
 
@@ -26,14 +26,14 @@ Zotero.TheLiterature = new function() {
 
 		//Version handling. Copied from zotfile then modified
 		//Fetch the version number hard coded in preferences
-		//Need to set up automatic updates
-		this.previous_version = this.getPref("version");
+		//**TODO** set up automatic updates
+		this.version = this.getPref("version");
 		//Ask Zotero what version it has loaded
 		Components.utils.import("resource://gre/modules/AddonManager.jsm");
 		AddonManager.getAddonByID("TheLiterature@protonmail.com", function(addon) {
 			//If the version Zotero returns doesn't equal that in preferences
 			//assume that Zotero version is newer and set it in preferences
-			if(addon.version != this.previous_version) {
+			if(addon.version != this.version) {
 				Zotero.TheLiterature.setPref("version", addon.version);
 			}
 		});
@@ -46,26 +46,40 @@ Zotero.TheLiterature = new function() {
 		}
 
 		//Unregister event listeners when the window closes 
-		//Important to avoid a memory leak
+		//Originally loaded in include.js
 		window.addEventListener("unload", function() {
 			Zotero.Notifier.unregisterObserver(notifierID);
 		}, false);
 
 		//Set an initial sci-hub mirror by fetching from preferences
-		//Need to set up a preferences window so that users can
+		//**TODO**Need to set up a preferences window so that users can
 		//modify the default mirror
 		this.sci_hub_url = this.getPref("sciHubUrl");
 		
-		//If no sci-hub is mirror set in preferences, find one and set it
-		//Should change this into a worker thread using docs at
-		//https://developer.mozilla.org/en-US/docs/Archive/Using_workers_in_extensions
-		if (!this.sci_hub_url) {
-			this.sciHubMirror.fastestMirror()
-				.then(function (mirror) {
-					console.log("Setting sci-hub url to " + mirror);
+		//Load a set of sci-hub mirrors to test into an array
+		this.sci_hub_mirrors = ["http://sci-hub.is", "http://sci-hub.se",
+			"https://sci-hub.se", "http://sci-hub.tw", "https://sci-hub.tw"];
+		
+		//See if the saved mirror is up
+		var url_test = Zotero.TheLiterature.findSciHubMirror
+			.mirrorTest(this.sci_hub_url);
+		url_test.then(console.log("using ", this.sci_hub_url))
+			//If the mirror is not up, find one and set it
+			.catch(function () {
+				var fast_mirror = Zotero.TheLiterature.findSciHubMirror
+					.findFastestMirror(Zotero.TheLiterature.sci_hub_mirrors);
+				fast_mirror.then(function(mirror) {
+					console.log("setting ", mirror);
 					Zotero.TheLiterature.setPref("sciHubUrl", mirror);
-				});
-		}
+				})
+					//Bail if no mirrors found
+					.catch(function(err) {
+						console.log(err);
+						console.log("Could not find a working sci-hub mirror,\
+							is your internet working?");
+					});
+
+			});
 	};
 
 	//Taken from zotfile and modified. Further documentation on preferences at
@@ -86,7 +100,7 @@ Zotero.TheLiterature = new function() {
 	};
 
 
-	//Taken from zotfile
+	//Modified from zotfile
 	this.setPref = function(pref, value) {        
 		switch (this.prefs.getPrefType(pref)) {
 		case this.prefs.PREF_BOOL:
@@ -99,7 +113,8 @@ Zotero.TheLiterature = new function() {
 		case this.prefs.PREF_INT:
 			return this.prefs.setIntPref(pref, value);
 		}
-		throw("Zotero.TheLiterature.setPref(): Unable to set preference.");
+		throw("Zotero.TheLiterature.setPref(): Unable to set preference for ",
+			pref);
 	};
 
 	//Check if a parent item has an attached PDF
@@ -125,17 +140,10 @@ Zotero.TheLiterature = new function() {
 		}
 	};
 
-	//Check if an item has a DOI
-	this.hasDOI = function (item) {
-		if (!item.getField("DOI")) {
-			return this.searchDOI(item);
-		}
-		return Promise.resolve();
-	};
-
-	//Function to search for missing DOI
+	//Function to search for missing DOI from online sources
 	//First tries NCBI's id converter API and then Crossref
-	//If search is successful, return DOI
+	//If search is successful, indirectly returns a promise containing the DOI
+	//If unsuccessful returns a rejected promise
 	this.searchDOI = function(item) {
 		//See  if a PMID or PMCID is stored in the item's 'extra' field
 		var extra = item.getField("extra");
@@ -177,14 +185,54 @@ Zotero.TheLiterature = new function() {
 		}
 	};
 
-	//Function to set the DOI field of an item
-	this.setDOI =function (item, doi) {
-		item.setField("DOI", doi);
+	//Function to get the DOI of an item from Zotero. The DOI can be stored in a
+	//couple of places, so need to check them all
+	this.getDOI = function (item) {
+		//Check the DOI field
+		if (item.getField("DOI")) {
+			return item.getField("DOI");
+		}
+		//See  if a DOI is stored in the item's 'extra' field
+		var extra = item.getField("extra");
+		//The extra field isn't strictly formatted so need to search for a
+		//string starting with 'DOI:'
+		var doiIndex = extra.indexOf("DOI:");
+		//indexOf() returns -1 if not found, otherwise a number indicating
+		//the character index the string starts with
+		if (doiIndex >= 0) {
+			//Move the index to the start of the actual DOI
+			doiIndex = doiIndex + 5;
+			//Get the substring starting at that index
+			var extraSub = extra.substring(doiIndex);
+			//Use regex to match a DOI
+			var pattern = new RegExp("(^10.(\\d)+/(\\S)+)");
+			//Return the DOI
+			return extraSub.match(pattern)[0];
+		}
+		//If no DOI found, return false
+		return false;
+	};
+
+	//Function to set the DOI field of an item in Zotero
+	this.setDOI = function (item, doi) {
+		//Some item types don't allow for a DOI field. First try to
+		//set the DOI field.
+		try {
+			item.setField("DOI", doi);
+		} catch (error) {
+		//If the DOI field fails, save in the extra field
+			console.log(error);
+			console.log("Error saving doi, saving to 'extra' field");
+			//Preserve the current content of the 'extra' field
+			var savedExtraField = item.getField("extra");
+			//Set the field with its prior content, a newline, and then the DOI
+			item.setField("extra", savedExtraField + "\n"
+				+ "DOI: " + doi);
+		}
 	};
 
 	//Take a DOI and lightly test if correctly formatted
-	this.testDOI = function(item) {
-		var doi = item.getField("DOI");
+	this.testDOI = function(doi) {
 		var pattern = new RegExp("(^10.(\\d)+/(\\S)+)");
 		if (doi.match(pattern)) {
 			return true;
@@ -194,6 +242,7 @@ Zotero.TheLiterature = new function() {
 		}
 	};
 
+	//Take a list of items and fetch PDFs for each
 	this.fetchPDFs = function(items) {
 		items.map(item => this.fetchPDF(item));
 	};
@@ -202,28 +251,31 @@ Zotero.TheLiterature = new function() {
 	this.fetchPDF = function(item) {
 		//To get a PDF from sci-hub, we need a doi to be present and valid
 		//First check for a DOI
-		if (!this.hasDOI(item)) {
+		if (!this.getDOI(item)) {
 			//if not present, try to search for a vaild doi
 			this.searchDOI(item)
 				//searchDOI() returns a promise. If the promise is resolved
 				//a valid DOI was found and has been set in the Zotero database.
-				.then(function() {
+				.then(function(doi) {
 					return Zotero.TheLiterature.sciHub.getPDF(item);
 				})
-				.catch(function() {
-					console.log("No DOI available for " +
-						item.getField("title"));
+				.catch(function(err) {
+					console.log("No DOI found for " + 
+						item.getField("title") +
+						" and unable to find replacement");
+					console.log(err);
 					return false;
 				});
 		}
 		//If there is a DOI, test that it is valid
-		else if (!this.testDOI(item)) {
+		else if (!this.testDOI(this.getDOI(item))) {
 			//If not valid, search for a valid DOI
 			//searchDOI() both searches and tests the response for validity
 			//searchDOI() returns a promise. If the promise is resolved
 			//a valid DOI was found and has been set in the Zotero databse.
 			this.searchDOI(item)
-				.then(function() {
+				.then(function(doi) {
+					this.setDOI(doi);
 					return Zotero.TheLiterature.sciHub.getPDF(item);
 				})
 				.catch(function() {
@@ -239,10 +291,11 @@ Zotero.TheLiterature = new function() {
 	};
 
 	//Get missing pdfs for user selected items
-	this.getMissingSelectedItems = function() {
+	//via ZoteroPane.getSelectedItems()
+	this.getMissingSelectedItems = function(items) {
 		var missingItems = [];
-		for (var item of ZoteroPane.getSelectedItems()) {
-			if (!this.hasPDF(item)) {
+		for (var item of items) {
+			if (this.hasPDF(item) === false) {
 				missingItems.push(item);
 			}
 		}
@@ -250,14 +303,15 @@ Zotero.TheLiterature = new function() {
 	};
 
 	//Get pdfs for all user selected items
-	this.getAllSelectedItems = function() {
-		this.fetchPDFs(ZoteroPane.getSelectedItems());
+	//ZoteroPane.getSelectedItems()
+	this.getAllSelectedItems = function(items) {
+		this.fetchPDFs(items);
 	};
 };
 
 //TODO
-//Display an icon on the toolbar
-//	Maybe needs to be in overlay.xul?
-//	Provide some menu items under the icon when clicked
-//Set up display windows and user input
-//	Window to display download success status
+//	Window to display download progress and success status
+//  Automatic updates
+//  Preferences window
+//  ?Automatic downloading for newly added items without attachments?
+//  Get the context-menu icon to work

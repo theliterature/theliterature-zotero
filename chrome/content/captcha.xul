@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE window SYSTEM "chrome://theliterature/locale/captcha.dtd">
+
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://global/content/commonDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://global/skin/commonDialog.css" type="text/css"?>
+
+<dialog 
+    id="TheLiterature-captcha-window"
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    buttons="accept,cancel"
+    buttonlabelaccept="OK"
+    buttonlabelcancel="Cancel"
+    onload="captchaWindow.onLoad();"
+    ondialogaccept="return Zotero.TheLiterature.sciHub.returnText();"
+    ondialogcancel="return Zotero.TheLiterature.sciHub.returnCancel();">
+    <!--  -->
+    <label 
+        id="title" value="&title.label;" align="center" 
+        class="header"/>
+    <image id="captcha_image"/>
+    <!-- main top level container -->
+    <vbox style="padding:10px" align="center" flex="1">
+        <!--  -->
+        <label value="&enter-captcha-text.label;" control="captcha_text"/>
+        <textbox 
+            id="captcha_text" 
+            rows="1" 
+            maxlength="6" 
+            multiline="false" 
+            wrap="off" 
+            onkeypress="if(event.keyCode === KeyEvent.DOM_VK_RETURN) Zotero.TheLiterature.sciHub.returnText();" />
+    </vbox>
+    <!-- Include the main extension logic -->
+    <script src="chrome://zotero/content/include.js"/>
+    <script src="chrome://TheLiterature/content/scripts/include.js"/>
+    <script>
+    <![CDATA[
+        var captchaWindow = new function() {
+            this.onLoad = onLoad;
+
+            function onLoad() {
+                console.log("loading image from " + window.arguments[0].img_src);
+                document.getElementById("captcha_image").src = 
+                    window.arguments[0].img_src;
+            }
+        }
+    ]]>
+    </script>
+</dialog>
+<!-- //https://wiki.mozilla.org/Education/Learning/ExtensionChrome 
+https://stackoverflow.com/questions/7203372/how-to-add-image-in-alert-or-in-propmts-alert-using-javascript-xul
+https://github.com/zotero/zotero/blob/master/chrome/content/zotero/captcha.xul-->

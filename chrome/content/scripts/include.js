@@ -4,9 +4,10 @@
 if (!Zotero.TheLiterature) {
 	var scriptLoader = Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
 		.getService(Components.interfaces.mozIJSSubScriptLoader);
-	var scripts = ["theliterature", "findDOI", "notifier","scihubmirror",
+	var scripts = ["theliterature", "findDOI", "notifier", "scihubmirror",
 		"scihub"];
-	scripts.forEach(s => scriptLoader.loadSubScript("chrome://TheLiterature/content/scripts/" + s + ".js"));
+	scripts.map(s => scriptLoader.loadSubScript(
+		"chrome://TheLiterature/content/scripts/" + s + ".js"));
 }
 
 

@@ -8,10 +8,11 @@
         <em:version>0.0.1</em:version>
         <em:type>2</em:type>
         <em:creator>Nemo</em:creator>
-        <em:description>Zotero plugin for auto-fetching pdfs from Sci-Hub</em:description>
-        <em:homepageURL>http://sci-hub.la</em:homepageURL>
+        <em:description>A Zotero plugin for auto-fetching pdfs from Sci-Hub</em:description>
+        <em:homepageURL>http://sci-hub.se</em:homepageURL>
         <em:type>2</em:type>
 
+        <!-- Requires Zotero version 5 or higher-->
         <em:targetApplication>
           <Description>
             <em:id>zotero@chnm.gmu.edu</em:id>
