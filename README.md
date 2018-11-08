@@ -1,13 +1,9 @@
 # theliterature-zotero
 A Zotero plugin for auto-fetching pdfs from Sci-Hub
 
-Adds an entry to the context menu to fetch a PDF from sci-hub
+Adds an entry to the context menu to fetch a PDF from sci-hub. Click and wait a few seconds, and you'll get a PDF!
 
-![ScreenShot](screenshots/context-menu.png)
-
-Click and wait a few seconds, and you'll get a PDF!
-
-![ScreenShot](screenshots/file-added.png)
+![ScreenShot](screenshots/context.gif)
 
 ## Installation
 
