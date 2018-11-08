@@ -5,6 +5,11 @@ Adds an entry to the context menu to fetch a PDF from sci-hub. Click and wait a 
 
 ![ScreenShot](screenshots/context.gif)
 
+* Tests sci-hub mirrors to find one that is responding
+* Searches Crossref to find missing DOIs
+* Automatically requests PDFs from sci-hub and imports into the Zotero library
+* Handles captcha challenges from sci-hub
+
 ## Installation
 
 ## Development
